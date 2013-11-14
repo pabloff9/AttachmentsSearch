@@ -215,19 +215,19 @@ gmail.selectAllMailFolder()
 
 while (True):
 
-    messagesIds = gmail.search(input("\nSearch keywords: "))
- 
-    anexos = open("anexos.txt", "w")
-     
-    for attachment in getAttachmentsNames(gmail, messagesIds):
-        print(attachment)
-        anexos.write(attachment + "\n")
-    anexos.flush()
 #     messagesIds = gmail.search(input("\nSearch keywords: "))
-#     
-#     message = gmail.fetchMessages(messagesIds)[0]
-#     
-#     content = emailParsing.parse(message)
-#     
-#     print(content)
-#     
+#  
+#     anexos = open("anexos.txt", "w")
+#      
+#     for attachment in getAttachmentsNames(gmail, messagesIds):
+#         print(attachment)
+#         anexos.write(attachment + "\n")
+#     anexos.flush()
+    messagesIds = gmail.search(input("\nSearch keywords: "))
+     
+    message = gmail.fetchMessages(messagesIds)[0]
+     
+    content = emailParsing.parse(message)
+     
+    print(content)
+     

@@ -54,8 +54,10 @@ def parse(content):
     """
     Eメールのコンテンツを受け取りparse,encodeして返す
     """
-    p = EmailParser()
-    msgobj = p.parse(content)
+#     p = EmailParser()
+#     msgobj = p.parse(content)
+
+    msgobj = content
     if msgobj['Subject'] is not None:
         decodefrag = decode_header(msgobj['Subject'])
         subj_fragments = []
@@ -78,6 +80,7 @@ def parse(content):
             if body is None:
                 body = ""
             body += str(
+             
                 part.get_payload(decode=True),
                 part.get_content_charset(),
                 'replace'

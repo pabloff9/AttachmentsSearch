@@ -1,3 +1,14 @@
+"""
+This code was based on GPLv3-licensed unity_gdrive_daemon.py, Copyright 2012 Canonical Ltd.
+and has been modified to suit this project.
+
+All modifications are Copyright 2013, Pablo Almeida de Andrade.
+
+GPLv3
+
+"""
+
+
 import sys
 from gi.repository import GLib, GObject, Gio
 from gi.repository import Accounts, Signon

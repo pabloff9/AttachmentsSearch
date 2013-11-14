@@ -3,6 +3,7 @@ import email.header
 import re
 import urllib.request
 import json
+import emailParsing
 
 
 #FIXME: "if there are no search results, the application crashes.
@@ -202,6 +203,11 @@ def getAttachmentsNames(connection, emailUidsList):
     
     return fileNames
 
+def getAttachment(email):
+    import emailParsing
+    
+    return emailParsing.parse(email)["attachments"]
+
 
 gmail = GmailConnection()
 gmail.selectAllMailFolder()
@@ -210,12 +216,18 @@ gmail.selectAllMailFolder()
 while (True):
 
     messagesIds = gmail.search(input("\nSearch keywords: "))
-
+ 
     anexos = open("anexos.txt", "w")
-    
+     
     for attachment in getAttachmentsNames(gmail, messagesIds):
         print(attachment)
         anexos.write(attachment + "\n")
     anexos.flush()
-    
-    
+#     messagesIds = gmail.search(input("\nSearch keywords: "))
+#     
+#     message = gmail.fetchMessages(messagesIds)[0]
+#     
+#     content = emailParsing.parse(message)
+#     
+#     print(content)
+#     

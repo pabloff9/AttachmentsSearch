@@ -35,6 +35,7 @@ class GmailConnection:
                 raise Exception
             
             self.uidsList = searchResult[1][0].decode().split(" ")
+            
         
         """
         This method converts the list of UIDs into a string of comma separated
@@ -110,7 +111,6 @@ class GmailConnection:
         auth_string = 'user=%s\1auth=Bearer %s\1\1' % (self.emailAddress, self.credentials._token)
          
         self.connection = imaplib.IMAP4_SSL("imap.gmail.com")
-        print(self.connection.capability())
         self.connection.authenticate('XOAUTH2', lambda x: auth_string)
     
     
@@ -128,6 +128,38 @@ class GmailConnection:
         else:
             result = self.connection.uid("search", None, 'X-GM-RAW "has:attachment"')
         return self.EmailUidsList(result)
+    
+    
+    """
+    Returns a list of attachment details, which are a tuple of 
+    (UID, indexOfTheAttachmentInTheMessage, filename, encoding) for every attachment
+    found in the given emailUidsList.
+    """
+    def getAttachmentsDetails(self, emailUidsList):
+        attachmentDetailsList = []
+    
+        structures = self.fetchBodyStructures(emailUidsList)
+        
+        for indexInTheList, structure in enumerate(structures):
+            pattern = re.compile('ATTACHMENT" \("FILENAME" "(.*?)"\)\)')
+            m = pattern.findall(str(structure))
+            
+            emailUid = emailUidsList.uidsList[indexInTheList]
+             
+            if len(m) > 0:
+                for indexInTheMessage, group in enumerate(m):
+                    decodedThing = email.header.decode_header(group)
+                    if (decodedThing[0][1] != None):
+                        encoding = decodedThing[0][1]
+                        filename = decodedThing[0][0]
+                        attachmentDetailsList.append((emailUid, indexInTheMessage, filename, encoding))
+                    else:
+                        attachmentDetailsList.append((emailUid, indexInTheMessage, group, None))
+            else:
+                continue
+        
+        return attachmentDetailsList
+    
     
     """
     Selects the user's All Mail folder.
@@ -168,6 +200,49 @@ class GmailConnection:
         
         return emails
     
+    def fetchSingleMessage(self, uid):
+        result, data = self.connection.uid("fetch", uid.encode(), '(RFC822)')
+        
+        if (result != "OK"):
+            raise Exception
+        
+        return email.message_from_bytes(data[0][1])
+    
+    
+    """
+    Downloads a attachment from a given attachment details tuple, which is a tuple
+    of (UID, indexInTheMessage, filename, encoding).
+    The result is a tuple of the type (filename, byteString), where byteString is the 
+    content of the file.
+    """
+    def downloadAttachment(self, attachmentDetails):
+        
+        #FIXME: This method assumes there's only one attachment with a certain name in the message,
+        # which may not be true
+        
+        #Download the message
+        uid = attachmentDetails[0]
+        message = self.fetchSingleMessage(uid)
+        
+        #Parse the message to find the attachment
+        
+        for part in message.walk():
+            
+            filenameHeader = part.get_filename()
+            if (filenameHeader != None):
+                                
+                filename, encoding = email.header.decode_header(filenameHeader)[0]                
+                
+                if (filename == attachmentDetails[2]):
+                    if (encoding != None):
+                        filename = filename.decode(encoding)
+                        attachment = part.get_payload(decode=True)
+                    break
+
+        #Copy the attachment to a bytes string
+        return (filename, attachment)
+        
+    
     """
     Fetches the BODYSTRUCTURE of messages from the server.
     This method returns a list of BODYSTRUCTURE strings.
@@ -178,30 +253,8 @@ class GmailConnection:
             raise Exception
         else:
             return data
-        
 
-def getAttachmentsNames(connection, emailUidsList):
     
-    fileNames = []
-    
-    structures = connection.fetchBodyStructures(emailUidsList)
-    
-    for structure in structures:
-        pattern = re.compile('ATTACHMENT" \("FILENAME" "(.*?)"\)\)')
-        m = pattern.findall(str(structure))
-         
-        if len(m) > 0:
-            for group in m:
-                decodedThing = email.header.decode_header(group)
-                if (decodedThing[0][1] != None):
-                    filename = decodedThing[0][0].decode(decodedThing[0][1])
-                    fileNames.append(filename)
-                else:
-                    fileNames.append(group)
-        else:
-            continue
-    
-    return fileNames
 
 def getAttachment(email):
     import emailParsing
@@ -209,25 +262,50 @@ def getAttachment(email):
     return emailParsing.parse(email)["attachments"]
 
 
+def fetchASingleMessageMatchingASearch(connection, keywords):
+    results = gmail.search(keywords)
+    aMessageUID = results.uidsList[0]
+    result, data = connection.connection.uid("fetch", aMessageUID, '(RFC822)');
+    return data
+
 gmail = GmailConnection()
 gmail.selectAllMailFolder()
 
-
 while (True):
 
-#     messagesIds = gmail.search(input("\nSearch keywords: "))
-#  
-#     anexos = open("anexos.txt", "w")
-#      
-#     for attachment in getAttachmentsNames(gmail, messagesIds):
+    messagesIds = gmail.search(input("\nSearch keywords: "))    
+    list = gmail.getAttachmentsDetails(messagesIds)
+    
+    for i, item in enumerate(list):
+        print(str(i) +": "+ str(item[2]))
+    
+    filename, attachment = gmail.downloadAttachment(list[int(input("\nChoose the index: "))])
+    
+    open("/home/pablo/" + filename, "wb").write(attachment)
+      
+#     for attachment in :
 #         print(attachment)
-#         anexos.write(attachment + "\n")
+#         anexos.write(str(attachment) + "\n")
 #     anexos.flush()
-    messagesIds = gmail.search(input("\nSearch keywords: "))
+#     messagesIds = gmail.search(input("\nSearch keywords: "))
+#      
+#     message = gmail.fetchMessages(messagesIds)[0]
+#      
+#     from io import StringIO
+#      
+#     content = emailParsing.parse(StringIO(str(message)))
+#      
+#     print(content)
+#      
+#     result = fetchASingleMessageMatchingASearch(gmail, "docx")
+#     message = result[0][1]
+#     open("/home/pablo/email.txt", "wb").write(message)
+#     
+#     emailobj = email.message_from_bytes(message)
+#     
+#     print(emailobj.is_multipart())
+#     
      
-    message = gmail.fetchMessages(messagesIds)[0]
      
-    content = emailParsing.parse(message)
-     
-    print(content)
-     
+
+

@@ -78,6 +78,7 @@ def parse(content):
             if body is None:
                 body = ""
             body += str(
+             
                 part.get_payload(decode=True),
                 part.get_content_charset(),
                 'replace'
